@@ -1,4 +1,4 @@
-import formidable from 'formidable';
+import { IncomingForm } from 'formidable';
 import fs from 'fs/promises';
 import Jimp from 'jimp';
 import QrCode from 'qrcode-reader';
@@ -10,49 +10,55 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS Headers
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).end();
   }
 
-  if (req.method !== "POST") {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const form = formidable({ keepExtensions: true });
+  const form = new IncomingForm({ keepExtensions: true, uploadDir: '/tmp' });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error("Form parse error:", err);
+      console.error('[FORM PARSE ERROR]', err);
       return res.status(500).json({ error: 'Failed to parse form data' });
     }
 
-    const file = files.file?.[0];
-    if (!file || !file.filepath) {
-      return res.status(400).json({ error: 'No file uploaded or invalid file format' });
+    const fileField = files.file || Object.values(files)[0];
+    if (!fileField || !fileField.filepath) {
+      console.error('[NO VALID FILE FOUND]', files);
+      return res.status(400).json({ error: 'No file uploaded or invalid file structure' });
     }
 
+    const filePath = fileField.filepath;
+    console.log('[UPLOAD PATH]', filePath);
+
     try {
-      const buffer = await fs.readFile(file.filepath);
-      const image = await Jimp.read(buffer);
+      const image = await Jimp.read(filePath);
       const qr = new QrCode();
 
-      qr.callback = function (qrErr, value) {
+      qr.callback = (qrErr, value) => {
         if (qrErr || !value) {
-          console.error("QR decode failed:", qrErr);
+          console.error('[QR DECODE ERROR]', qrErr || 'No QR code found');
           return res.status(400).json({ error: 'QR code could not be decoded' });
         }
 
+        console.log('[QR SUCCESS]', value.result);
         return res.status(200).json({ text: value.result });
       };
 
       qr.decode(image.bitmap);
     } catch (decodeErr) {
-      console.error("Image processing error:", decodeErr);
+      console.error('[JIMP DECODE ERROR]', decodeErr);
       return res.status(500).json({ error: 'Failed to process image' });
     }
   });

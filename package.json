@@ -4,8 +4,8 @@
   "type": "module",
   "main": "api/qr-upload.js",
   "dependencies": {
-    "formidable": "^2.0.1",
+    "formidable": "^3.5.0",
     "jimp": "^0.22.10",
-    "qrcode-reader": "0.2.1"
+    "qrcode-reader": "^1.0.3"
   }
 }
