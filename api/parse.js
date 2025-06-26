@@ -2,6 +2,16 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 export default async function handler(req, res) {
+  // ✅ Add CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "https://budgettracker-cf2d6-aab34.web.app");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // ✅ Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   const { url } = req.query;
 
   if (!url) {
