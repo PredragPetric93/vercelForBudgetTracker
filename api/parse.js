@@ -2,6 +2,10 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 export default async function handler(req, res) {
+  // Enable CORS
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Or use your actual domain instead of "*"
+  res.setHeader("Access-Control-Allow-Methods", "GET");
+
   const { url } = req.query;
 
   if (!url) {
@@ -12,14 +16,12 @@ export default async function handler(req, res) {
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
 
-    // Extract raw amount string
+    // Extract and normalize amount
     let rawAmount = $('#totalAmountLabel').text().trim();
-    // Convert "6.555,75" → "6555.75"
     rawAmount = rawAmount.replace(/\./g, '').replace(',', '.');
     const amount = parseFloat(rawAmount);
 
     const date = $('#sdcDateTimeLabel').text().trim();
-
     const shop = $('#shopFullNameLabel').text().trim();
     const invoice = $('#invoiceTypeId').text().trim();
     const transaction = $('#transactionTypeId').text().trim();
