@@ -1,7 +1,7 @@
 import { IncomingForm } from 'formidable';
 import fs from 'fs/promises';
 import Jimp from 'jimp';
-import QrCode from 'qrcode-reader';
+import jsQR from 'jsqr';
 
 export const config = {
   api: {
@@ -10,7 +10,6 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS Headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -18,38 +17,37 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  const form = new IncomingForm({ keepExtensions: true, uploadDir: '/tmp' });
+  const form = new IncomingForm({ keepExtensions: true, uploadDir: "/tmp" });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error("[FORM PARSE ERROR]", err);
-      return res.status(500).json({ error: "Failed to parse form" });
+      console.error("[FORM ERROR]", err);
+      return res.status(500).json({ error: "Failed to parse upload" });
     }
 
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
 
     if (!file?.filepath) {
-      console.error("[NO VALID FILE FOUND]", files);
-      return res.status(400).json({ error: "No file uploaded or invalid format" });
+      console.error("[NO FILE]", files);
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
     try {
-      const image = await Jimp.read(file.filepath);
-      const qr = new QrCode();
+      const buffer = await fs.readFile(file.filepath);
+      const image = await Jimp.read(buffer);
+      const { data, width, height } = image.bitmap;
 
-      qr.callback = (qrErr, value) => {
-        if (qrErr || !value) {
-          console.error("[QR DECODE FAIL]", qrErr || "No result");
-          return res.status(400).json({ error: "QR code could not be decoded" });
-        }
+      const code = jsQR(new Uint8ClampedArray(data), width, height);
 
-        console.log("[QR SUCCESS]", value.result);
-        return res.status(200).json({ text: value.result });
-      };
+      if (!code) {
+        console.error("[QR NOT FOUND]");
+        return res.status(400).json({ error: "QR code could not be decoded" });
+      }
 
-      qr.decode(image.bitmap);
-    } catch (err) {
-      console.error("[JIMP PROCESS ERROR]", err);
+      console.log("[QR SUCCESS]", code.data);
+      return res.status(200).json({ text: code.data });
+    } catch (decodeErr) {
+      console.error("[DECODE ERROR]", decodeErr);
       return res.status(500).json({ error: "Failed to process image" });
     }
   });
