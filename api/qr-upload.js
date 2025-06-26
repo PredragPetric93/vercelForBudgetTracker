@@ -1,7 +1,7 @@
 import formidable from 'formidable';
 import fs from 'fs/promises';
 import Jimp from 'jimp';
-import QrCode from 'qrcode-reader';
+import jsQR from 'jsqr';
 
 export const config = {
   api: {
@@ -35,25 +35,22 @@ export default async function handler(req, res) {
 
     const uploadedFile = files.file;
     if (!uploadedFile || !uploadedFile[0] || !uploadedFile[0].filepath) {
-      return res.status(400).json({ error: 'No file uploaded or path missing' });
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
     try {
-      const imageBuffer = await fs.readFile(uploadedFile[0].filepath);
-      const image = await Jimp.read(imageBuffer);
-      const qr = new QrCode();
+      const buffer = await fs.readFile(uploadedFile[0].filepath);
+      const image = await Jimp.read(buffer);
+      const { data, width, height } = image.bitmap;
 
-      qr.callback = (qrErr, value) => {
-        if (qrErr || !value) {
-          console.error("QR decode error:", qrErr);
-          return res.status(400).json({ error: 'QR code could not be decoded' });
-        }
-        return res.status(200).json({ text: value.result });
-      };
+      const code = jsQR(new Uint8ClampedArray(data), width, height);
+      if (!code) {
+        return res.status(400).json({ error: 'QR code not found' });
+      }
 
-      qr.decode(image.bitmap);
-    } catch (decodeErr) {
-      console.error("JIMP decode error:", decodeErr);
+      return res.status(200).json({ text: code.data });
+    } catch (e) {
+      console.error("QR decode error:", e);
       return res.status(500).json({ error: 'Failed to process image' });
     }
   });
