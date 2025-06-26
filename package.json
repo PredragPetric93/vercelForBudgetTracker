@@ -6,6 +6,6 @@
   "dependencies": {
     "formidable": "^2.0.1",
     "jimp": "^0.22.10",
-    "qrcode-reader": "^1.0.5"
+    "qrcode-reader": "0.2.1"
   }
 }
