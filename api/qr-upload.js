@@ -1,5 +1,4 @@
 import formidable from 'formidable';
-import fs from 'fs/promises';
 import Jimp from 'jimp';
 import jsQR from 'jsqr';
 
@@ -26,7 +25,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const form = formidable({ keepExtensions: true });
+  const form = formidable({ keepExtensions: true, maxFileSize: 10 * 1024 * 1024 }); // 10MB
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
@@ -35,16 +34,16 @@ export default async function handler(req, res) {
     }
 
     const uploaded = files.file;
-    if (!uploaded) {
+    if (!uploaded || !uploaded[0]) {
       console.error('[NO VALID FILE FOUND]', files);
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
     try {
-      const buffer = await fs.readFile(uploaded.filepath);
+      const buffer = await uploaded[0].toBuffer();
       const image = await Jimp.read(buffer);
 
-      // Enhance image for better decoding
+      // Enhance the image for QR detection
       image
         .greyscale()
         .contrast(1)
