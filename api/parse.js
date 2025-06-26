@@ -1,26 +1,24 @@
-import fetch from 'node-fetch';
-import { JSDOM } from 'jsdom';
+import fetch from "node-fetch";
+import * as cheerio from "cheerio";
 
 export default async function handler(req, res) {
-  const receiptUrl = req.query.url;
-  if (!receiptUrl) {
-    return res.status(400).json({ error: "Missing 'url' parameter" });
-  }
+  const { url } = req.query;
+
+  if (!url) return res.status(400).json({ error: "Missing URL" });
 
   try {
-    const response = await fetch(receiptUrl);
-    const html = await response.text();
-    const dom = new JSDOM(html);
-    const doc = dom.window.document;
+    const html = await fetch(url).then(r => r.text());
+    const $ = cheerio.load(html);
 
-    const amountText = doc.querySelector('#totalAmountLabel')?.textContent.trim();
-    const dateText = doc.querySelector('#sdcDateTimeLabel')?.textContent.trim();
+    const amount = $("#totalAmountLabel").text().trim();
+    const date = $("#sdcDateTimeLabel").text().trim();
 
-    res.status(200).json({
-      amount: amountText || null,
-      date: dateText || null
-    });
+    const storeName = $("label:contains('Име продајног места')").next().text().trim();
+    const storeType = $("label:contains('Врста')").next().text().trim();
+
+    res.status(200).json({ amount, date, storeName, storeType });
   } catch (err) {
-    res.status(500).json({ error: "Failed to parse receipt", detail: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Failed to parse receipt." });
   }
 }
