@@ -2,16 +2,6 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 export default async function handler(req, res) {
-  // ✅ Add CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "https://budgettracker-cf2d6-aab34.web.app");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  // ✅ Handle preflight request
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
   const { url } = req.query;
 
   if (!url) {
@@ -22,7 +12,12 @@ export default async function handler(req, res) {
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
 
-    const amount = $('#totalAmountLabel').text().trim();
+    // Extract raw amount string
+    let rawAmount = $('#totalAmountLabel').text().trim();
+    // Convert "6.555,75" → "6555.75"
+    rawAmount = rawAmount.replace(/\./g, '').replace(',', '.');
+    const amount = parseFloat(rawAmount);
+
     const date = $('#sdcDateTimeLabel').text().trim();
 
     const shop = $('#shopFullNameLabel').text().trim();
