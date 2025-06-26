@@ -12,7 +12,7 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS headers for browser access
+  // Handle preflight request first
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // Apply CORS for actual POST
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -36,9 +37,14 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to parse form data' });
     }
 
-    const file = files.file;
+    console.log("Received files:", files);
+
+    // Try to find the first file, regardless of field name
+    const fileKey = Object.keys(files)[0];
+    const file = files[fileKey];
+
     if (!file) {
-      console.error("NO FILE FOUND:", files);
+      console.error("NO FILE FOUND");
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
@@ -52,7 +58,7 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'QR code could not be decoded' });
         }
 
-        console.log("QR SUCCESS:", value.result);
+        console.log("✅ QR SUCCESS:", value.result);
         return res.status(200).json({ text: value.result });
       };
 
