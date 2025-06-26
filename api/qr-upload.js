@@ -1,4 +1,5 @@
 // api/qr-upload.js
+
 import formidable from 'formidable';
 import fs from 'fs';
 import Jimp from 'jimp';
@@ -11,7 +12,19 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+  // CORS headers for browser access
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    return res.status(200).end();
+  }
+
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method !== "POST") {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
@@ -19,12 +32,13 @@ export default async function handler(req, res) {
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error("Form parse error:", err);
+      console.error("FORM PARSE FAIL:", err);
       return res.status(500).json({ error: 'Failed to parse form data' });
     }
 
     const file = files.file;
     if (!file) {
+      console.error("NO FILE FOUND:", files);
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
@@ -32,17 +46,19 @@ export default async function handler(req, res) {
       const image = await Jimp.read(file.filepath);
       const qr = new QrCode();
 
-      qr.callback = function (err, value) {
-        if (err || !value) {
-          console.error("QR decode error:", err);
+      qr.callback = function (qrErr, value) {
+        if (qrErr || !value) {
+          console.error("QR DECODE FAIL:", qrErr);
           return res.status(400).json({ error: 'QR code could not be decoded' });
         }
+
+        console.log("QR SUCCESS:", value.result);
         return res.status(200).json({ text: value.result });
       };
 
       qr.decode(image.bitmap);
     } catch (decodeErr) {
-      console.error("QR processing error:", decodeErr);
+      console.error("DECODE FAIL:", decodeErr);
       return res.status(500).json({ error: 'Failed to process image' });
     }
   });
