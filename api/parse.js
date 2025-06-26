@@ -1,34 +1,33 @@
-const cheerio = require('cheerio');
-import axios from "axios";
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   const { url } = req.query;
 
   if (!url) {
-    return res.status(400).json({ error: 'Missing URL parameter' });
+    return res.status(400).json({ error: 'Missing URL' });
   }
 
   try {
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
 
-    const amount = $('#totalAmountLabel')?.text()?.trim();
-    const date = $('#sdcDateTimeLabel')?.text()?.trim();
+    const amount = $('#totalAmountLabel').text().trim();
+    const date = $('#sdcDateTimeLabel').text().trim();
 
-    const shopName = $('#shopFullNameLabel')?.text()?.trim();
-    const invoiceType = $('#invoiceTypeId')?.text()?.trim();
-    const transactionType = $('#transactionTypeId')?.text()?.trim();
+    const shop = $('#shopFullNameLabel').text().trim();
+    const invoice = $('#invoiceTypeId').text().trim();
+    const transaction = $('#transactionTypeId').text().trim();
+    const comment = `${shop}, ${invoice} ${transaction}`;
 
-    const comment = [shopName, invoiceType, transactionType].filter(Boolean).join(', ');
-
-    return res.json({
+    return res.status(200).json({
       amount,
       date,
-      comment,
-      type: "Scanned"
+      type: 'Scanned',
+      comment
     });
   } catch (err) {
-    console.error('Failed to parse receipt:', err);
+    console.error('Parse error:', err);
     return res.status(500).json({ error: 'Failed to parse receipt' });
   }
-};
+}
