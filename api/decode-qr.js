@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
     // ✅ Log image as base64 so you can inspect it
     const base64Image = buffer.toString('base64');
-    console.log("🖼️ Base64 image:\n", base64Image);
+    console.log(base64Image);
 
     const image = await Jimp.read(buffer);
     const qr = new QrCode();
