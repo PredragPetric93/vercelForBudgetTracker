@@ -1,0 +1,12 @@
+{
+  "name": "vercel-qr-decoder",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "formidable": "^3.5.0",
+    "jimp": "^0.22.10",
+    "qrcode-reader": "^1.0.4"
+  }
+}
