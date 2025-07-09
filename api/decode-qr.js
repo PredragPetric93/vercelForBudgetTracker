@@ -1,5 +1,4 @@
 import { IncomingForm } from 'formidable';
-import { Readable } from 'stream';
 import Jimp from 'jimp';
 import QrCode from 'qrcode-reader';
 
@@ -19,12 +18,12 @@ export default async function handler(req, res) {
   form.parse(req, async (err, fields, files) => {
     try {
       if (err || !files.file) {
-        return res.status(400).json({ error: 'Image file missing or error parsing form' });
+        return res.status(400).json({ error: 'Image file missing or parsing failed' });
       }
 
-      // Read file as buffer (Vercel safe)
+      // ✅ Vercel-compatible: use toBuffer() directly
       const file = files.file;
-      const fileBuffer = await toBuffer(file.file);
+      const fileBuffer = await file.toBuffer();
 
       const image = await Jimp.read(fileBuffer);
       const qr = new QrCode();
@@ -41,17 +40,5 @@ export default async function handler(req, res) {
       console.error('QR decode error:', error);
       return res.status(500).json({ error: 'Server error while decoding image' });
     }
-  });
-}
-
-// Convert file stream to buffer
-function toBuffer(file) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    const stream = Readable.from(file);
-
-    stream.on('data', (chunk) => chunks.push(chunk));
-    stream.on('end', () => resolve(Buffer.concat(chunks)));
-    stream.on('error', reject);
   });
 }
