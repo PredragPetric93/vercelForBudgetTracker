@@ -1,5 +1,6 @@
+import formidable from 'formidable';
+import fs from 'fs';
 import Jimp from 'jimp';
-import QrCode from 'qrcode-reader';
 
 export const config = {
   api: {
@@ -9,51 +10,40 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Only POST allowed' });
   }
 
-  try {
-    const buffers = [];
+  const form = formidable({ multiples: false, keepExtensions: true });
 
-    const contentType = req.headers['content-type'];
-    if (!contentType.startsWith('multipart/form-data')) {
-      return res.status(400).json({ error: 'Invalid content type' });
+  form.parse(req, async (err, fields, files) => {
+    if (err || !files.file) {
+      console.error('❌ Form parsing error or missing file:', err, files);
+      return res.status(400).json({ error: 'No file received' });
     }
 
-    const boundary = contentType.split('boundary=')[1];
-    const body = await readStream(req);
+    try {
+      const filePath = files.file.filepath;
+      const fileStats = fs.statSync(filePath);
+      const buffer = fs.readFileSync(filePath);
+      console.log('📦 File received:', {
+        path: filePath,
+        size: fileStats.size,
+        name: files.file.originalFilename,
+        mime: files.file.mimetype,
+      });
 
-    const fileMatch = body.match(/Content-Type: image\/jpeg[\s\S]*?\r\n\r\n([\s\S]*?)\r\n--/);
-    if (!fileMatch) {
-      return res.status(400).json({ error: 'File not found in request' });
+      const image = await Jimp.read(buffer);
+      const base64 = await image.getBase64Async(Jimp.MIME_JPEG);
+      console.log('📷 Image loaded successfully, sending preview back');
+
+      return res.status(200).json({
+        previewBase64: base64,
+        width: image.bitmap.width,
+        height: image.bitmap.height,
+      });
+    } catch (error) {
+      console.error('❌ Error reading image with Jimp:', error);
+      return res.status(500).json({ error: 'Failed to read image' });
     }
-
-    const base64Data = Buffer.from(fileMatch[1], 'binary');
-    const image = await Jimp.read(base64Data);
-    const qr = new QrCode();
-
-    qr.callback = (err, value) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      if (err || !value) {
-        return res.status(400).json({ error: 'Failed to decode QR code' });
-      }
-      return res.status(200).json({ data: value.result });
-    };
-
-    qr.decode(image.bitmap);
-  } catch (err) {
-    console.error('QR decode error:', err);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    return res.status(500).json({ error: 'Server error while decoding image' });
-  }
-}
-
-function readStream(stream) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    stream.on('data', chunk => chunks.push(chunk));
-    stream.on('end', () => resolve(Buffer.concat(chunks).toString('binary')));
-    stream.on('error', reject);
   });
 }
