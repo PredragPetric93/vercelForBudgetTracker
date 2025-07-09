@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   setCORSHeaders(res);
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end(); // Preflight OK
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
@@ -36,29 +36,16 @@ export default async function handler(req, res) {
     try {
       const uploadedFile = files.file;
       const filePath = uploadedFile.filepath || uploadedFile.path;
-
       const buffer = fs.readFileSync(filePath);
-      const base64 = buffer.toString('base64');
-      const mime = uploadedFile.mimetype || 'image/jpeg';
-      const dataUrl = `data:${mime};base64,${base64}`;
-
-      console.log('🖼️ Image Data URL Preview:\n', dataUrl.slice(0, 300) + '...');
 
       const image = await Jimp.read(buffer);
       const qr = new QrCode();
 
-      qr.callback = function (err, value) {
+      qr.callback = (err, value) => {
         if (err || !value) {
-          return res.status(400).json({
-            error: 'Failed to decode QR code',
-            preview: dataUrl.slice(0, 500) + '...'
-          });
+          return res.status(400).json({ error: 'Failed to decode QR code' });
         }
-
-        return res.status(200).json({
-          data: value.result,
-          preview: dataUrl.slice(0, 500) + '...'
-        });
+        return res.status(200).json({ data: value.result });
       };
 
       qr.decode(image.bitmap);
