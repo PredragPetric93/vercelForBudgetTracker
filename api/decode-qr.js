@@ -1,41 +1,35 @@
-// Proper ESM imports
 import formidable from 'formidable';
 import fs from 'fs';
 import Jimp from 'jimp';
 import QrCode from 'qrcode-reader';
 
+// Disable Next.js default body parser
 export const config = {
   api: {
-    bodyParser: false
-  }
+    bodyParser: false,
+  },
 };
 
-// CORS headers
-function setCORSHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-}
-
 export default async function handler(req, res) {
-  setCORSHeaders(res);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Use modern async API
-  const form = formidable({
-    multiples: false,
-    keepExtensions: true
-  });
+  // Allow CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   try {
-    const [fields, files] = await form.parse(req);
+    const form = formidable({ multiples: false, keepExtensions: true });
+
+    const [fields, files] = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) return reject(err);
+        resolve([fields, files]);
+      });
+    });
+
     const uploadedFile = files.file;
 
     if (!uploadedFile || !uploadedFile.filepath) {

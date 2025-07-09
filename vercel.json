@@ -1,9 +1,12 @@
 {
   "version": 2,
+  "builds": [
+    { "src": "api/decode-qr.js", "use": "@vercel/node" }
+  ],
   "routes": [
     {
       "src": "/api/decode-qr",
-      "methods": ["POST", "OPTIONS"],
+      "methods": ["POST"],
       "dest": "api/decode-qr.js"
     }
   ]
