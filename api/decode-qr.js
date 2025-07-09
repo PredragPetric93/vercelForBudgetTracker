@@ -32,7 +32,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Form parse error' });
     }
 
-    const uploadedFile = files.file;
+    const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file;
+
     if (!uploadedFile || !uploadedFile.filepath) {
       console.error('❌ File path is missing:', uploadedFile);
       return res.status(400).json({ error: 'Filepath missing' });
