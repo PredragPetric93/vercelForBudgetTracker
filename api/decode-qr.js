@@ -1,4 +1,5 @@
 import { IncomingForm } from 'formidable';
+import fs from 'fs/promises';
 import Jimp from 'jimp';
 import QrCode from 'qrcode-reader';
 
@@ -9,6 +10,15 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  // ✅ Add CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -21,11 +31,10 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Image file missing or parsing failed' });
       }
 
-      // ✅ Vercel-compatible: use toBuffer() directly
       const file = files.file;
-      const fileBuffer = await file.toBuffer();
+      const buffer = await fs.readFile(file.filepath); // ✅ Use fs.promises to read image
 
-      const image = await Jimp.read(fileBuffer);
+      const image = await Jimp.read(buffer);
       const qr = new QrCode();
 
       qr.callback = (error, value) => {
