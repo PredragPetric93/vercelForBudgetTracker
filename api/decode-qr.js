@@ -1,7 +1,7 @@
-const formidable = require('formidable');
-const fs = require('fs');
-const Jimp = require('jimp');
-const QrCode = require('qrcode-reader');
+import { promises as fs } from 'fs';
+import { IncomingForm } from 'formidable';
+import Jimp from 'jimp';
+import QrCode from 'qrcode-reader';
 
 export const config = {
   api: {
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // ✅ Handle preflight
+  // ✅ Preflight request support
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const form = new formidable.IncomingForm({ multiples: false, keepExtensions: true });
+  const form = new IncomingForm({ multiples: false, keepExtensions: true });
 
   form.parse(req, async (err, fields, files) => {
     if (err || !files.file) {
@@ -33,9 +33,9 @@ export default async function handler(req, res) {
 
     try {
       const imagePath = files.file.filepath;
-      const buffer = fs.readFileSync(imagePath);
-
+      const buffer = await fs.readFile(imagePath);
       const image = await Jimp.read(buffer);
+
       const qr = new QrCode();
 
       qr.callback = (err, value) => {
@@ -47,6 +47,7 @@ export default async function handler(req, res) {
 
       qr.decode(image.bitmap);
     } catch (error) {
+      console.error('QR decode error:', error);
       return res.status(500).json({ error: 'Server error while decoding image' });
     }
   });
