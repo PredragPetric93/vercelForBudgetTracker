@@ -1,5 +1,3 @@
-import formidable from 'formidable';
-import fs from 'fs';
 import Jimp from 'jimp';
 import QrCode from 'qrcode-reader';
 
@@ -11,50 +9,51 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Allow CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
   try {
-    const form = formidable({ multiples: false, keepExtensions: true });
+    const buffers = [];
 
-    const [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) return reject(err);
-        resolve([fields, files]);
-      });
-    });
-
-    const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file;
-
-    if (!uploadedFile || !uploadedFile.filepath) {
-      return res.status(400).json({ error: 'No file received' });
+    const contentType = req.headers['content-type'];
+    if (!contentType.startsWith('multipart/form-data')) {
+      return res.status(400).json({ error: 'Invalid content type' });
     }
 
-    const buffer = fs.readFileSync(uploadedFile.filepath);
+    const boundary = contentType.split('boundary=')[1];
+    const body = await readStream(req);
 
-    // ✅ Log image as base64 so you can inspect it
-    const base64Image = buffer.toString('base64');
-    console.log(base64Image);
+    const fileMatch = body.match(/Content-Type: image\/jpeg[\s\S]*?\r\n\r\n([\s\S]*?)\r\n--/);
+    if (!fileMatch) {
+      return res.status(400).json({ error: 'File not found in request' });
+    }
 
-    const image = await Jimp.read(buffer);
+    const base64Data = Buffer.from(fileMatch[1], 'binary');
+    const image = await Jimp.read(base64Data);
     const qr = new QrCode();
 
     qr.callback = (err, value) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
       if (err || !value) {
-        console.error("❌ QR decode failed", err);
         return res.status(400).json({ error: 'Failed to decode QR code' });
       }
       return res.status(200).json({ data: value.result });
     };
 
     qr.decode(image.bitmap);
-  } catch (error) {
-    console.error('QR decode error:', error);
+  } catch (err) {
+    console.error('QR decode error:', err);
+    res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(500).json({ error: 'Server error while decoding image' });
   }
+}
+
+function readStream(stream) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    stream.on('data', chunk => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('binary')));
+    stream.on('error', reject);
+  });
 }
