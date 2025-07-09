@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Allow local dev CORS
+  // Allow CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -29,20 +29,21 @@ export default async function handler(req, res) {
       });
     });
 
-    console.log("📂 Uploaded files:", files);
-
-    // 🛠 Fix: Access first file from array
     const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file;
 
     if (!uploadedFile || !uploadedFile.filepath) {
-      console.error("❌ File not received or missing filepath");
       return res.status(400).json({ error: 'No file received' });
     }
 
     const buffer = fs.readFileSync(uploadedFile.filepath);
-    const image = await Jimp.read(buffer);
 
+    // ✅ Log image as base64 so you can inspect it
+    const base64Image = buffer.toString('base64');
+    console.log("🖼️ Base64 image:\n", base64Image);
+
+    const image = await Jimp.read(buffer);
     const qr = new QrCode();
+
     qr.callback = (err, value) => {
       if (err || !value) {
         console.error("❌ QR decode failed", err);
