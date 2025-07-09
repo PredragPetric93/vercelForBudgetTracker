@@ -9,7 +9,19 @@ export const config = {
   }
 };
 
+function setCORSHeaders(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
 export default async function handler(req, res) {
+  setCORSHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end(); // Preflight OK
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -25,17 +37,13 @@ export default async function handler(req, res) {
       const uploadedFile = files.file;
       const filePath = uploadedFile.filepath || uploadedFile.path;
 
-      // Read image into buffer
       const buffer = fs.readFileSync(filePath);
-
-      // 🔍 Convert buffer to base64 so you can view the actual image in a browser
       const base64 = buffer.toString('base64');
-      const mime = uploadedFile.mimetype || 'image/jpeg'; // fallback
+      const mime = uploadedFile.mimetype || 'image/jpeg';
       const dataUrl = `data:${mime};base64,${base64}`;
 
-      console.log('🖼️ Viewable Image Data URL:\n', dataUrl.slice(0, 300) + '...');
+      console.log('🖼️ Image Data URL Preview:\n', dataUrl.slice(0, 300) + '...');
 
-      // Now try to decode
       const image = await Jimp.read(buffer);
       const qr = new QrCode();
 
