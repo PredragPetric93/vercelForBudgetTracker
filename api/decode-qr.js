@@ -9,12 +9,11 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS: Always set these headers
+  // ✅ CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // CORS preflight response
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -23,34 +22,34 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Only POST allowed' });
   }
 
-  const form = formidable({ multiples: false, keepExtensions: true });
+  const form = formidable({ keepExtensions: true, multiples: false });
 
   form.parse(req, async (err, fields, files) => {
-    if (err || !files.file) {
-      console.error('❌ Form parsing error or missing file:', err, files);
+    if (err) {
+      console.error('❌ Form parse error:', err);
+      return res.status(400).json({ error: 'Failed to parse form' });
+    }
+
+    if (!files || !files.file) {
+      console.error('❌ No file found in upload:', files);
       return res.status(400).json({ error: 'No file received' });
     }
 
-    try {
-      const filePath = files.file.filepath;
-      const fileStats = fs.statSync(filePath);
-      const buffer = fs.readFileSync(filePath);
-      console.log('📦 File received:', {
-        path: filePath,
-        size: fileStats.size,
-        name: files.file.originalFilename,
-        mime: files.file.mimetype,
-      });
+    const uploaded = files.file;
+    const filePath = uploaded.filepath || uploaded.path;
 
+    if (!filePath) {
+      console.error('❌ File path is missing:', uploaded);
+      return res.status(400).json({ error: 'Filepath missing' });
+    }
+
+    try {
+      const buffer = fs.readFileSync(filePath);
       const image = await Jimp.read(buffer);
       const base64 = await image.getBase64Async(Jimp.MIME_JPEG);
-      console.log('📷 Image loaded successfully, sending preview back');
 
-      return res.status(200).json({
-        previewBase64: base64,
-        width: image.bitmap.width,
-        height: image.bitmap.height,
-      });
+      console.log('✅ Image loaded. Dimensions:', image.bitmap.width, image.bitmap.height);
+      return res.status(200).json({ previewBase64: base64 });
     } catch (error) {
       console.error('❌ Error reading image with Jimp:', error);
       return res.status(500).json({ error: 'Failed to read image' });
