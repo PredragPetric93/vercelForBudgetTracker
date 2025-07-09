@@ -3,7 +3,6 @@ import fs from 'fs';
 import Jimp from 'jimp';
 import QrCode from 'qrcode-reader';
 
-// Disable Next.js default body parser
 export const config = {
   api: {
     bodyParser: false,
@@ -15,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Allow CORS
+  // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -30,9 +29,13 @@ export default async function handler(req, res) {
       });
     });
 
+    console.log("🔍 Form fields:", fields);
+    console.log("📂 Uploaded files:", files);
+
     const uploadedFile = files.file;
 
     if (!uploadedFile || !uploadedFile.filepath) {
+      console.error("❌ File not received or missing filepath");
       return res.status(400).json({ error: 'No file received' });
     }
 
