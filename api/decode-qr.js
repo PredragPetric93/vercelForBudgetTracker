@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // CORS headers
+  // Allow local dev CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -29,10 +29,10 @@ export default async function handler(req, res) {
       });
     });
 
-    console.log("🔍 Form fields:", fields);
     console.log("📂 Uploaded files:", files);
 
-    const uploadedFile = files.file;
+    // 🛠 Fix: Access first file from array
+    const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file;
 
     if (!uploadedFile || !uploadedFile.filepath) {
       console.error("❌ File not received or missing filepath");
@@ -45,6 +45,7 @@ export default async function handler(req, res) {
     const qr = new QrCode();
     qr.callback = (err, value) => {
       if (err || !value) {
+        console.error("❌ QR decode failed", err);
         return res.status(400).json({ error: 'Failed to decode QR code' });
       }
       return res.status(200).json({ data: value.result });
