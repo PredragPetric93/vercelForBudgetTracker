@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No file received' });
     }
 
-    const uploaded = files.file;
+    const uploaded = Array.isArray(files.file) ? files.file[0] : files.file;
     const filePath = uploaded.filepath || uploaded.path;
 
     if (!filePath) {
